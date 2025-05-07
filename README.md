@@ -1,6 +1,8 @@
 
 # LS-LMSR Prediction Market – Design Document
 
+* I am not a maths I am a code. I make no claims to validity of the math with in.
+
 ## Overview
 
 This prediction market uses the Liquidity-Sensitive Logarithmic Market Scoring Rule (LS-LMSR) to price YES/NO outcome shares. The system is structured in three layers:
