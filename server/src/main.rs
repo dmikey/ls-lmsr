@@ -103,6 +103,45 @@ fn main() {
                 }
             }
 
+            (&Method::Post, "/sell") => {
+                let mut body = String::new();
+                request.as_reader().read_to_string(&mut body).unwrap();
+
+                let parsed: Result<BuyRequest, _> = serde_json::from_str(&body);
+                if let Ok(sell) = parsed {
+                    let outcome = match sell.outcome.to_uppercase().as_str() {
+                        "YES" => lslmsr::types::Outcome::Yes,
+                        "NO" => lslmsr::types::Outcome::No,
+                        _ => {
+                            let response = Response::from_string("Invalid outcome")
+                                .with_status_code(StatusCode(400));
+                            request.respond(response).unwrap();
+                            return;
+                        }
+                    };
+
+                    let amount: u128 = match sell.amount.parse() {
+                        Ok(val) => val,
+                        Err(_) => {
+                            let response = Response::from_string("Invalid amount")
+                                .with_status_code(StatusCode(400));
+                            request.respond(response).unwrap();
+                            return;
+                        }
+                    };
+
+                    // Since there's no sell method, we'll return an appropriate error
+                    let response = Response::from_string("Sell functionality not yet implemented")
+                        .with_status_code(StatusCode(501)); // 501 Not Implemented
+                    request.respond(response).unwrap();
+                } else {
+                    let response = Response::from_string("Malformed JSON")
+                        .with_status_code(StatusCode(400));
+                    request.respond(response).unwrap();
+                }
+            }
+
+            
             (&Method::Post, "/simulate") => {
                 let mut body = String::new();
                 request.as_reader().read_to_string(&mut body).unwrap();

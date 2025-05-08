@@ -97,4 +97,84 @@ impl MarketEngine {
         // Return cost difference in fixed-point notation
         ((new_cost - old_cost) * DECIMALS as f64) as u128
     }
+
+    pub fn simulate_sell(&self, outcome: Outcome, amount: u128) -> Result<u128, TradeError> {
+        // Validate the user has enough shares to sell
+        match outcome {
+            Outcome::Yes if self.q_yes < amount => return Err(TradeError::InsufficientCollateral),
+            Outcome::No if self.q_no < amount => return Err(TradeError::InsufficientCollateral),
+            _ => {}
+        }
+
+        let mut q_yes = self.q_yes;
+        let mut q_no = self.q_no;
+
+        // Calculate cost before the sell
+        let old_cost = calc_cost(
+            q_yes as f64,
+            q_no as f64,
+            calc_b(self.alpha, q_yes + q_no) as f64,
+        );
+
+        // Subtract the shares
+        match outcome {
+            Outcome::Yes => q_yes -= amount,
+            Outcome::No => q_no -= amount,
+        }
+
+        // Calculate cost after the sell
+        let new_cost = if q_yes == 0 && q_no == 0 {
+            0.0
+        } else {
+            calc_cost(
+                q_yes as f64,
+                q_no as f64,
+                calc_b(self.alpha, q_yes + q_no) as f64,
+            )
+        };
+
+        // Calculate refund amount
+        let refund = (old_cost - new_cost) * DECIMALS as f64;
+        Ok(refund as u128)
+    }
+
+    pub fn sell(&mut self, outcome: Outcome, amount: u128) -> Result<Price, TradeError> {
+        // Validate the user has enough shares to sell
+        match outcome {
+            Outcome::Yes if self.q_yes < amount => return Err(TradeError::InsufficientCollateral),
+            Outcome::No if self.q_no < amount => return Err(TradeError::InsufficientCollateral),
+            _ => {}
+        }
+
+        // Calculate cost before the sell
+        let old_cost = calc_cost(
+            self.q_yes as f64,
+            self.q_no as f64,
+            calc_b(self.alpha, self.q_yes + self.q_no) as f64,
+        );
+
+        // Subtract the shares
+        match outcome {
+            Outcome::Yes => self.q_yes -= amount,
+            Outcome::No => self.q_no -= amount,
+        }
+
+        // Calculate cost after the sell
+        let new_cost = if self.q_yes == 0 && self.q_no == 0 {
+            0.0
+        } else {
+            calc_cost(
+                self.q_yes as f64,
+                self.q_no as f64,
+                calc_b(self.alpha, self.q_yes + self.q_no) as f64,
+            )
+        };
+
+        // Reduce collateral
+        let refund = (old_cost - new_cost) * DECIMALS as f64;
+        self.total_collateral = self.total_collateral.saturating_sub(refund as u128);
+
+        // Return the updated price
+        Ok(self.get_price())
+    }
 }
