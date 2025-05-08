@@ -1,6 +1,30 @@
 [package]
-name = "xo-lslmsr"
+name = "lslmsr"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+authors = ["Derek Anderson"]
+description = "Rust implementation of Liquidity-Sensitive LMSR for prediction markets"
+license = "MIT"
+
+[lib]
+name = "lslmsr"
+path = "mod.rs"
+crate-type = ["rlib"]
 
 [dependencies]
+# For math functions like ln, exp, sqrt if using f64 version
+libm = "0.2.15"
+
+# Optional: For precise decimal math before fixed-point optimization
+# rust_decimal = "1.33.1"
+
+# Optional: If you want to serialize structs for the server later
+serde = { version = "1.0", features = ["derive"] }
+
+# Optional: Useful for testing or CLI experimentation
+anyhow = "1.0.98"
+thiserror = "2.0.12"
+
+[dev-dependencies]
+# For writing unit/integration tests
+criterion = "0.5.1"
