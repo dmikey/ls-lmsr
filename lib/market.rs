@@ -19,35 +19,48 @@ impl MarketEngine {
     }
 
     pub fn buy(&mut self, outcome: Outcome, amount: u128) -> Result<Price, TradeError> {
-        let old_cost = calc_cost(
-            self.q_yes as f64,
-            self.q_no as f64,
-            calc_b(self.alpha, self.q_yes + self.q_no) as f64,
-        );
+        // Calculate cost before the buy
+        let old_cost = if self.q_yes == 0 && self.q_no == 0 {
+            0.0 // If no shares, starting cost is 0
+        } else {
+            calc_cost(
+                self.q_yes as f64,
+                self.q_no as f64,
+                calc_b(self.alpha, self.q_yes + self.q_no) as f64,
+            )
+        };
 
+        // Update shares based on outcome
         match outcome {
             Outcome::Yes => self.q_yes += amount,
             Outcome::No => self.q_no += amount,
         }
 
+        // Calculate new cost
         let new_cost = calc_cost(
             self.q_yes as f64,
             self.q_no as f64,
             calc_b(self.alpha, self.q_yes + self.q_no) as f64,
         );
 
-        let cost = new_cost - old_cost;
-        self.total_collateral += cost as u128;
+        // Calculate cost difference and update total collateral
+        let cost_diff = new_cost - old_cost;
+        let cost_to_add = (cost_diff * DECIMALS as f64) as u128;
+        self.total_collateral += cost_to_add;
 
-        let (p_yes, p_no) = calc_price(self.q_yes as f64, self.q_no as f64, calc_b(self.alpha, self.q_yes + self.q_no) as f64);
-
-        Ok(Price {
-            yes: (p_yes * DECIMALS as f64) as u128,
-            no: (p_no * DECIMALS as f64) as u128,
-        })
+        // Get current price after buy
+        Ok(self.get_price())
     }
 
     pub fn get_price(&self) -> Price {
+        // Handle the case where there are no shares
+        if self.q_yes == 0 && self.q_no == 0 {
+            return Price {
+                yes: DECIMALS / 2,
+                no: DECIMALS / 2,
+            };
+        }
+
         let (p_yes, p_no) = calc_price(
             self.q_yes as f64,
             self.q_no as f64,
@@ -69,12 +82,19 @@ impl MarketEngine {
             Outcome::No => q_no += amount,
         }
 
-        let b_old = calc_b(self.alpha, self.q_yes + self.q_no) as f64;
-        let b_new = calc_b(self.alpha, q_yes + q_no) as f64;
+        // Handle the case where there are no initial shares
+        let old_cost = if self.q_yes == 0 && self.q_no == 0 {
+            0.0 // If no shares, starting cost is 0
+        } else {
+            let b_old = calc_b(self.alpha, self.q_yes + self.q_no) as f64;
+            calc_cost(self.q_yes as f64, self.q_no as f64, b_old)
+        };
 
-        let old_cost = calc_cost(self.q_yes as f64, self.q_no as f64, b_old);
+        // Calculate new cost
+        let b_new = calc_b(self.alpha, q_yes + q_no) as f64;
         let new_cost = calc_cost(q_yes as f64, q_no as f64, b_new);
 
+        // Return cost difference in fixed-point notation
         ((new_cost - old_cost) * DECIMALS as f64) as u128
     }
 }
