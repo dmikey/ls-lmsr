@@ -1,0 +1,11 @@
+[package]
+name = "lslmsr-server"
+version = "0.1.0"
+edition = "2021"
+authors = ["Derek Anderson"]
+description = "Server for Liquidity-Sensitive LMSR prediction markets"
+
+[dependencies]
+lslmsr = { path = "../lib" }
+tiny_http = "0.12"
+serde_json = "1.0"
