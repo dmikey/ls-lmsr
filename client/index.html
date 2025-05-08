@@ -275,9 +275,18 @@
 
         function fixedToPercentage(amount) {
             // Convert fixed-point representation to percentage (0-100%)
-            const amountBigInt = BigInt(amount);
-            const percentage = (Number(amountBigInt) / Number(DECIMALS)) * 100;
-            return percentage.toFixed(2) + "%";
+            try {
+                // Convert the input to a string first to handle both number and string inputs
+                const amountStr = String(amount);
+                // Then safely convert to BigInt
+                const amountBigInt = BigInt(amountStr);
+                // Calculate percentage without BigInt division which can lose precision
+                const percentage = Number(amountBigInt) / Number(DECIMALS) * 100;
+                return percentage.toFixed(2) + "%";
+            } catch (error) {
+                console.error("Error converting to percentage:", error);
+                return "0.00%";
+            }
         }
 
         async function fetchPrices() {
