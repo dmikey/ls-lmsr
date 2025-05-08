@@ -130,10 +130,25 @@ fn main() {
                         }
                     };
 
-                    // Since there's no sell method, we'll return an appropriate error
-                    let response = Response::from_string("Sell functionality not yet implemented")
-                        .with_status_code(StatusCode(501)); // 501 Not Implemented
-                    request.respond(response).unwrap();
+                    let mut engine = market.lock().unwrap();
+                    match engine.sell(outcome, amount) {
+                        Ok(new_price) => {
+                            let body = json!({
+                                "yes": (new_price.yes as f64 / 1e18),
+                                "no": (new_price.no as f64 / 1e18)
+                            })
+                            .to_string();
+
+                            let response = Response::from_string(body)
+                                .with_header(Header::from_bytes("Content-Type", "application/json").unwrap());
+                            request.respond(response).unwrap();
+                        }
+                        Err(err) => {
+                            let response = Response::from_string(format!("Sell failed: {:?}", err))
+                                .with_status_code(StatusCode(500));
+                            request.respond(response).unwrap();
+                        }
+                    }
                 } else {
                     let response = Response::from_string("Malformed JSON")
                         .with_status_code(StatusCode(400));
