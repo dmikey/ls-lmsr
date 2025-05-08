@@ -103,6 +103,52 @@ fn main() {
                 }
             }
 
+            (&Method::Post, "/simulate") => {
+                let mut body = String::new();
+                request.as_reader().read_to_string(&mut body).unwrap();
+
+                let parsed: Result<BuyRequest, _> = serde_json::from_str(&body);
+                if let Ok(buy) = parsed {
+                    let outcome = match buy.outcome.to_uppercase().as_str() {
+                        "YES" => lslmsr::types::Outcome::Yes,
+                        "NO" => lslmsr::types::Outcome::No,
+                        _ => {
+                            let response = Response::from_string("Invalid outcome")
+                                .with_status_code(StatusCode(400));
+                            request.respond(response).unwrap();
+                            return;
+                        }
+                    };
+
+                    let amount: u128 = match buy.amount.parse() {
+                        Ok(val) => val,
+                        Err(_) => {
+                            let response = Response::from_string("Invalid amount")
+                                .with_status_code(StatusCode(400));
+                            request.respond(response).unwrap();
+                            return;
+                        }
+                    };
+
+                    let engine = market.lock().unwrap();
+                    let cost = engine.simulate(outcome, amount);
+
+                    let body = json!({
+                        "simulated_cost": cost.to_string(),
+                        "simulated_cost_float": (cost as f64 / 1e18)
+                    })
+                    .to_string();
+
+                    let response = Response::from_string(body)
+                        .with_header(Header::from_bytes("Content-Type", "application/json").unwrap());
+                    request.respond(response).unwrap();
+                } else {
+                    let response = Response::from_string("Malformed JSON")
+                        .with_status_code(StatusCode(400));
+                    request.respond(response).unwrap();
+                }
+            }
+
             _ => {
                 let response = Response::empty(StatusCode(404));
                 request.respond(response).unwrap();
