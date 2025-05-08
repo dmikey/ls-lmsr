@@ -1,4 +1,3 @@
-
 # LS-LMSR Prediction Market – Design Document
 
 * I am not a maths I am a code. I make no claims to validity of the math with in.
@@ -15,6 +14,8 @@ This prediction market uses the Liquidity-Sensitive Logarithmic Market Scoring R
 
 ### Run it
 
+start the http server, that also serves a UI at `:8000/`
+
 ```bash
 cargo run -p lslmsr-server
 ```
@@ -25,7 +26,7 @@ cargo run -p lslmsr-server
 
 ```mermaid
 flowchart TD
-    A[HTML Client] -->|HTTP/JSON| B[Axum Server]
+    A[HTML Client] -->|HTTP/JSON| B[Tiny HTTP Server]
     B -->|Calls into| C[LS-LMSR lib]
     C --> D[Market Engine]
     C --> E[Fixed-Point Math Utils]
@@ -117,11 +118,30 @@ Values handled in `u128` with 18 decimals (fixed-point math).
 
 ---
 
-## Future Improvements
+## Example CURL Commands
 
-- Multi-outcome support
-- Fee mechanisms
-- Persistent storage backend (Postgres or file)
-- Authentication for user wallets
-- Display total shares, market cost, and market depth.
----
+### 1. Check Current Prices
+```bash
+curl http://localhost:8000/price
+```
+
+### 2. Simulate a Trade
+```bash
+curl -X POST http://localhost:8000/simulate \
+  -H "Content-Type: application/json" \
+  -d '{"outcome": "YES", "amount": "1000000000000000000"}'
+```
+
+### 3. Buy YES Shares
+```bash
+curl -X POST http://localhost:8000/buy \
+  -H "Content-Type: application/json" \
+  -d '{"outcome": "YES", "amount": "1000000000000000000"}'
+```
+
+### 4. Sell YES Shares
+```bash
+curl -X POST http://localhost:8000/sell \
+  -H "Content-Type: application/json" \
+  -d '{"outcome": "YES", "amount": "1000000000000000000"}'
+```
