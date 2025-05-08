@@ -1,40 +1,23 @@
 use tiny_http::{Server, Response, Method, StatusCode, Header};
 use serde_json::json;
 use std::sync::{Arc, Mutex};
+use lslmsr::market::MarketEngine;
+use serde::Deserialize;
+use std::io::Read;
 
-// Simple price structure
-struct Price {
-    yes: f64,
-    no: f64,
-}
-
-// Market engine structure
-struct MarketEngine {
-    price: Price,
-}
-
-impl MarketEngine {
-    fn new() -> Self {
-        MarketEngine {
-            price: Price {
-                yes: 0.5,
-                no: 0.5,
-            },
-        }
-    }
-
-    fn get_price(&self) -> &Price {
-        &self.price
-    }
+#[derive(Deserialize)]
+struct BuyRequest {
+    outcome: String, // "YES" or "NO"
+    amount: String,  // in fixed-point string form, e.g. "1000000000000000000"
 }
 
 fn main() {
     let server = Server::http("0.0.0.0:8000").unwrap();
-    let market = Arc::new(Mutex::new(MarketEngine::new()));
+    let market = Arc::new(Mutex::new(MarketEngine::new(1_000_000_000_000_000_000)));
 
     println!("Server running at http://0.0.0.0:8000");
 
-    for request in server.incoming_requests() {
+    for mut request in server.incoming_requests() {
         println!("received request! method: {:?}, url: {:?}, headers: {:?}",
             request.method(),
             request.url(),
@@ -65,6 +48,59 @@ fn main() {
             (&Method::Get, "/") => {
                 let response = Response::from_string("LS-LMSR server running.");
                 request.respond(response).unwrap();
+            }
+
+            (&Method::Post, "/buy") => {
+                let mut body = String::new();
+                request.as_reader().read_to_string(&mut body).unwrap();
+            
+                let parsed: Result<BuyRequest, _> = serde_json::from_str(&body);
+                if let Ok(buy) = parsed {
+                    let outcome = match buy.outcome.to_uppercase().as_str() {
+                        "YES" => lslmsr::types::Outcome::Yes,
+                        "NO" => lslmsr::types::Outcome::No,
+                        _ => {
+                            let response = Response::from_string("Invalid outcome")
+                                .with_status_code(StatusCode(400));
+                            request.respond(response).unwrap();
+                            return;
+                        }
+                    };
+            
+                    let amount: u128 = match buy.amount.parse() {
+                        Ok(val) => val,
+                        Err(_) => {
+                            let response = Response::from_string("Invalid amount")
+                                .with_status_code(StatusCode(400));
+                            request.respond(response).unwrap();
+                            return;
+                        }
+                    };
+            
+                    let mut engine = market.lock().unwrap();
+                    match engine.buy(outcome, amount) {
+                        Ok(new_price) => {
+                            let body = json!({
+                                "yes": (new_price.yes as f64 / 1e18),
+                                "no": (new_price.no as f64 / 1e18)
+                            })
+                            .to_string();
+            
+                            let response = Response::from_string(body)
+                                .with_header(Header::from_bytes("Content-Type", "application/json").unwrap());
+                            request.respond(response).unwrap();
+                        }
+                        Err(err) => {
+                            let response = Response::from_string(format!("Trade failed: {:?}", err))
+                                .with_status_code(StatusCode(500));
+                            request.respond(response).unwrap();
+                        }
+                    }
+                } else {
+                    let response = Response::from_string("Malformed JSON")
+                        .with_status_code(StatusCode(400));
+                    request.respond(response).unwrap();
+                }
             }
 
             _ => {

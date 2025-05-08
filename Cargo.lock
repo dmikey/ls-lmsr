@@ -282,6 +282,7 @@ name = "lslmsr-server"
 version = "0.1.0"
 dependencies = [
  "lslmsr",
+ "serde",
  "serde_json",
  "tiny_http",
 ]

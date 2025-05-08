@@ -13,6 +13,14 @@ This prediction market uses the Liquidity-Sensitive Logarithmic Market Scoring R
 
 ---
 
+### Run it
+
+```bash
+cargo run -p lslmsr-server
+```
+
+---
+
 ## Architecture
 
 ```mermaid
