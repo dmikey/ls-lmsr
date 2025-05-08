@@ -44,10 +44,8 @@ flowchart TD
 
 ### `server`
 
-- Built with `axum` or `actix-web`
 - Routes:
   - `GET /price`
-  - `GET /depth`
   - `POST /buy`
   - `POST /sell`
   - `POST /simulate`
@@ -125,5 +123,5 @@ Values handled in `u128` with 18 decimals (fixed-point math).
 - Fee mechanisms
 - Persistent storage backend (Postgres or file)
 - Authentication for user wallets
-
+- Display total shares, market cost, and market depth.
 ---

@@ -46,8 +46,20 @@ fn main() {
             }
 
             (&Method::Get, "/") => {
-                let response = Response::from_string("LS-LMSR server running.");
-                request.respond(response).unwrap();
+                use std::fs;
+
+                match fs::read_to_string("./client/index.html") {
+                    Ok(contents) => {
+                        let response = Response::from_string(contents)
+                            .with_header(Header::from_bytes("Content-Type", "text/html").unwrap());
+                        request.respond(response).unwrap();
+                    }
+                    Err(_) => {
+                        let response = Response::from_string("index.html not found")
+                            .with_status_code(StatusCode(500));
+                        request.respond(response).unwrap();
+                    }
+                }
             }
 
             (&Method::Post, "/buy") => {
